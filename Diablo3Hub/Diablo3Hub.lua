@@ -75,14 +75,16 @@ function Diablo3Hub.Init(frame, index)
 			local aniCircle = hCircle:Lookup("Animate_" .. v .. "Circle")
 			local aniWater = hWater:Lookup("Animate_" .. v .. "Water")
 
-			local tArtwork = Diablo3Hub.tArtwork
+			--[[local tArtwork = Diablo3Hub.tArtwork
 
 			aniCircle:SetAnimate(tArtwork["aniCircle"][k], 0, -1)
-			aniWater:SetAnimate(tArtwork["aniWater"][k], 0, -1)
+			aniWater:SetAnimate(tArtwork["aniWater"][k], 0, -1)]]
 
 			aniCircle:SetAnimateType(7)
 			aniCircle:SetAlpha(200)
 			aniWater:Hide()
+
+			--aniCircle:SetPercentage(0.5)
 		end
 	else
 		local handle = frame:Lookup("", "")
@@ -112,7 +114,7 @@ function Diablo3Hub.Init(frame, index)
 		aniCircle:SetAnimateType(7)
 		aniCircle:SetAlpha(200)
 
-		aniWater:Hide()
+		--aniWater:Hide()
 	end
 end
 
@@ -163,40 +165,41 @@ function Diablo3Hub.UpdateHFData(frame)
 		if player.nMaxLife > 0 then
 			local fHealth = player.nCurrentLife / player.nMaxLife
 			local szPer = string.format("%d%%", fHealth * 100)
-			local szVal = string.format("%d/%d", player.nCurrentLife, player.nMaxLife)
-			Diablo3Hub.UpdateMergeCircle(frame, fHealth, szPer, szVal, "Left")
+			Diablo3Hub.UpdateMergeCircle(frame, fHealth, szPer, "Left")
 		end
 
 		if dwForceID == 7 then	--唐门
 			if player.nMaxEnergy > 0 then
 				local fPer = player.nCurrentEnergy / player.nMaxEnergy
 				local szPer = string.format("%d%%", fPer * 100)
-				local szVal = string.format("%d/%d", player.nCurrentEnergy, player.nMaxEnergy)
-				Diablo3Hub.UpdateMergeCircle(frame, fPer, szPer, szVal, "Right")
+				Diablo3Hub.UpdateMergeCircle(frame, fPer, szPer, "Right")
 			end
 		elseif dwForceID == 8 then	--藏剑
 			if player.nMaxRage > 0 then
 				local fRage = player.nCurrentRage / player.nMaxRage
 				local szPer = string.format("%d%%", fRage * 100)
-				local szVal = string.format("%d/%d", player.nCurrentRage, player.nMaxRage)
-				Diablo3Hub.UpdateMergeCircle(frame, fRage, szPer, szVal, "Right")
+				Diablo3Hub.UpdateMergeCircle(frame, fRage, szPer, "Right")
 			end
 		elseif dwForceID == 10 then	--明教
-			local fPer = math.max(player.nCurrentSunEnergy / player.nMaxSunEnergy, player.nCurrentMoonEnergy / player.nMaxMoonEnergy)
-			local szValS = string.format("日 %d/%d", player.nCurrentSunEnergy / 100, player.nMaxSunEnergy / 100)
-			local szValM = string.format("月 %d/%d", player.nCurrentMoonEnergy / 100, player.nMaxMoonEnergy / 100)
-			if player.nSunPowerValue == 1 then
-				szValS, fPer = "满日", 1
-			elseif player.nMoonPowerValue == 1 then
-				szValM, fPer = "满月", 1
+			local fPerS, fPerM = player.nCurrentSunEnergy / player.nMaxSunEnergy, player.nCurrentMoonEnergy / player.nMaxMoonEnergy
+			local fPer = math.max(fPerS, fPerM)
+			local szPer = nil
+			if fPerM > fPerS then
+				szPer = string.format("月 %d", fPerM * 100)
+			else
+				szPer = string.format("日 %d", fPerS * 100)
 			end
-			Diablo3Hub.UpdateMergeCircle(frame, fPer, szValS, szValM, "Right")
+			if player.nSunPowerValue == 1 then
+				szPer, fPer = "满日", 1
+			elseif player.nMoonPowerValue == 1 then
+				szPer, fPer = "满月", 1
+			end
+			Diablo3Hub.UpdateMergeCircle(frame, fPer, szPer, "Right")
 		else
 			if player.nMaxMana > 0 and player.nMaxMana ~= 1 then
 				local fMana = player.nCurrentMana / player.nMaxMana
 				local szPer = string.format("%d%%", fMana * 100)
-				local szVal = string.format("%d/%d", player.nCurrentMana, player.nMaxMana)
-				Diablo3Hub.UpdateMergeCircle(frame, fMana, szPer, szVal, "Right")
+				Diablo3Hub.UpdateMergeCircle(frame, fMana, szPer, "Right")
 			end
 		end
 	end
@@ -235,12 +238,13 @@ function Diablo3Hub.UpdateCircle(frame, fp, szPer, szVal)
 	hValue:SetText(szVal)
 end
 
-function Diablo3Hub.UpdateMergeCircle(frame, fp, szPer, szVal, szPos)
+function Diablo3Hub.UpdateMergeCircle(frame, fp, szPer, szPos)
 	local handle = frame:Lookup("", "")
 	local hCircle = handle:Lookup("Handle_" .. szPos):Lookup("Handle_" .. szPos .. "Circle")
 	local hWater = hCircle:Lookup("Handle_" .. szPos .. "Water")
 	local aniCircle = hCircle:Lookup("Animate_" .. szPos .. "Circle")
 	local aniWater = hWater:Lookup("Animate_" .. szPos .. "Water")
+	local hPer = hCircle:Lookup("Text_" .. szPos .. "Per")
 
 	local cW, cH = aniCircle:GetSize()
 	local cX, cY = aniCircle:GetRelPos()
@@ -248,26 +252,36 @@ function Diablo3Hub.UpdateMergeCircle(frame, fp, szPer, szVal, szPos)
 	local wX, wY = hWater:GetRelPos()
 	local h = wH * fp
 	local a = (h + (wY - cY)) / cH
-		--Output(a)
+
 	aniCircle:SetPercentage(a)
-	local b = cH * a
-	local c = cH - b - (wY - cY)
-	local d = aniWater:GetRelPos()
-	local e, f = aniWater:GetSize()
-	aniWater:SetRelPos(d, c - f / 2)
-	hWater:FormatAllItemPos()
+	if szPos == "Left" then
+		local b = cH * a
+		local c = cH - b - (wY - cY)
+		local d = aniWater:GetRelPos()
+		local e, f = aniWater:GetSize()
+		aniWater:SetRelPos(d, c - f / 2)
+		hWater:FormatAllItemPos()
+	elseif szPos == "Right" then
+		local b = cH * a
+		local c = cH - b - (wY - cY)
+		local d = cX + wH
+		local e, f = aniWater:GetSize()
+		aniWater:SetRelPos(d, c - f / 2)
+		hWater:FormatAllItemPos()
+	end
 	if fp == 1 then
 		aniWater:Hide()
 	else
 		aniWater:Show()
 	end
+	hPer:SetText(szPer)
 end
 
 function Diablo3Hub.GetMenu()
 	local menu = {
 		szOption = "DIABLO3血槽",
 		{
-			szOption = "合并血蓝球",
+			szOption = "合并血蓝双球",
 			bCheck = true,
 			bChecked = Diablo3Hub.bMerge,
 			fnAction = function()
@@ -280,10 +294,10 @@ function Diablo3Hub.GetMenu()
 end
 
 function Diablo3Hub.TogglePanel(bMerge)
-	if not bMerge then
-		--打开风格1界面
-		for index = 1, 2, 1 do
-			local frame = Station.Lookup("Normal/Diablo3Hub" .. index)
+	--双球界面
+	for index = 1, 2, 1 do
+		local frame = Station.Lookup("Normal/Diablo3Hub" .. index)
+		if not bMerge then
 			if not frame then
 				frame = Wnd.OpenWindow("Interface\\Diablo3Hub\\Diablo3Hub.ini", "Diablo3Hub" .. index)
 				frame.index = index
@@ -294,15 +308,13 @@ function Diablo3Hub.TogglePanel(bMerge)
 				Diablo3Hub.OnFrameCreate()
 				this = _this
 			end
+		elseif frame then
+			Wnd.CloseWindow("Diablo3Hub" .. index)
 		end
-		--关闭风格2界面
-		local frame = Station.Lookup("Normal/Diablo3HubMerge")
-		if frame then
-			Wnd.CloseWindow("Diablo3HubMerge")
-		end
-	else
-		--打开风格2界面
-		local frame = Station.Lookup("Normal/Diablo3HubMerge")
+	end
+	--单球界面
+	local frame = Station.Lookup("Normal/Diablo3HubMerge")
+	if bMerge then
 		if not frame then
 			frame = Wnd.OpenWindow("Interface\\Diablo3Hub\\Diablo3HubMerge.ini", "Diablo3HubMerge")
 			frame.index = 3
@@ -313,13 +325,8 @@ function Diablo3Hub.TogglePanel(bMerge)
 			Diablo3Hub.OnFrameCreate()
 			this = _this
 		end
-		--关闭风格1界面
-		for index = 1, 2, 1 do
-			local frame = Station.Lookup("Normal/Diablo3Hub" .. index)
-			if frame then
-				Wnd.CloseWindow("Diablo3Hub" .. index)
-			end
-		end
+	elseif frame then
+		Wnd.CloseWindow("Diablo3HubMerge")
 	end
 end
 
@@ -330,7 +337,7 @@ RegisterEvent("LOGIN_GAME", function()
  		end,
  	}
  	Player_AppendAddonMenu(tMenu)
-	Diablo3Hub.TogglePanel(false)
+	Diablo3Hub.TogglePanel(Diablo3Hub.bMerge)
 end)
 
 
