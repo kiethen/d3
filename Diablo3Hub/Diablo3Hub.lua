@@ -12,13 +12,12 @@ Diablo3Hub = {
 		},
 		["imgHighLight"] = {18, 17},
 	},
-	nScale = 1,
+	bMerge = false,
 }
 
 RegisterCustomData("Diablo3Hub.tAnchor")
-
-local tCustomModeName = {"血球", "蓝球"}
-local szIniFile = "Interface\\Diablo3Hub\\Diablo3Hub.ini"
+RegisterCustomData("Diablo3Hub.bMerge")
+local tCustomModeName = {"血球", "蓝球", "血蓝球"}
 
 function Diablo3Hub.OnFrameCreate()
 	this:RegisterEvent("UI_SCALED")
@@ -27,8 +26,8 @@ function Diablo3Hub.OnFrameCreate()
 	this:RegisterEvent("ON_LEAVE_CUSTOM_UI_MODE")
 	this:RegisterEvent("PLAYER_STATE_UPDATE")
 	Diablo3Hub.UpdateAnchor(this)
-	for i = 1, 2, 1 do
-		if this.index == i then
+	for i = 1, 3, 1 do
+		if this.index and this.index == i then
 			UpdateCustomModeWindow(this, tCustomModeName[i])
 			Diablo3Hub.Init(this, i)
 		end
@@ -45,7 +44,11 @@ function Diablo3Hub.UpdateAnchor(frame)
 	if anchor then
 		frame:SetPoint(anchor.s, 0, 0, anchor.r, anchor.x, anchor.y)
 	else
-		frame:SetAbsPos(500 + (frame.index - 1) * 180, 500)
+		if frame.index == 3 then
+			frame:SetAbsPos(500, 500)
+		else
+			frame:SetAbsPos(500 + (frame.index - 1) * 180, 500)
+		end
 	end
 	frame:CorrectPos()
 end
@@ -64,31 +67,53 @@ function Diablo3Hub.OnEvent(event)
 end
 
 function Diablo3Hub.Init(frame, index)
-	local handle = frame:Lookup("", "")
-	local imgCircleBg = handle:Lookup("Image_CircleBg")
-	local hCircle = handle:Lookup("Handle_Circle")
-	local imgHighLight = hCircle:Lookup("Image_HighLight")
-	local hWater = hCircle:Lookup("Handle_Water")
-	local aniCircle = hCircle:Lookup("Animate_Circle")
-	local aniWater = hWater:Lookup("Animate_Water")
+	if index == 3 then
+		local handle = frame:Lookup("", "")
+		for k, v in ipairs({"Left", "Right"}) do
+			local hCircle = handle:Lookup("Handle_" .. v):Lookup("Handle_" .. v .. "Circle")
+			local hWater = hCircle:Lookup("Handle_" .. v .. "Water")
+			local aniCircle = hCircle:Lookup("Animate_" .. v .. "Circle")
+			local aniWater = hWater:Lookup("Animate_" .. v .. "Water")
 
-	local tArtwork = Diablo3Hub.tArtwork
+			local tArtwork = Diablo3Hub.tArtwork
 
-	imgCircleBg:SetFrame(tArtwork["imgCircleBg"][index])
-	imgHighLight:SetFrame(tArtwork["imgHighLight"][index])
-	aniCircle:SetImagePath(tArtwork["aniCircle"][index])
-	aniWater:SetImagePath(tArtwork["aniWater"][index])
+			aniCircle:SetAnimate(tArtwork["aniCircle"][k], 0, -1)
+			aniWater:SetAnimate(tArtwork["aniWater"][k], 0, -1)
 
-	aniCircle:SetGroup(0)
-	aniCircle:SetLoopCount(-1)
-	aniWater:SetGroup(0)
-	aniWater:SetLoopCount(-1)
+			aniCircle:SetAnimateType(7)
+			aniCircle:SetAlpha(200)
+			aniWater:Hide()
+		end
+	else
+		local handle = frame:Lookup("", "")
+		local imgCircleBg = handle:Lookup("Image_CircleBg")
+		local hCircle = handle:Lookup("Handle_Circle")
+		local imgHighLight = hCircle:Lookup("Image_HighLight")
+		local hWater = hCircle:Lookup("Handle_Water")
+		local aniCircle = hCircle:Lookup("Animate_Circle")
+		local aniWater = hWater:Lookup("Animate_Water")
 
-	aniCircle:SetAnimateType(7)
-	aniCircle:SetAlpha(150)
+		local tArtwork = Diablo3Hub.tArtwork
 
-	aniWater:Hide()
-	--aniCircle:SetPercentage(0.5)
+		imgCircleBg:SetFrame(tArtwork["imgCircleBg"][index])
+		imgHighLight:SetFrame(tArtwork["imgHighLight"][index])
+
+		aniCircle:SetAnimate(tArtwork["aniCircle"][index], 0, -1)
+		aniWater:SetAnimate(tArtwork["aniWater"][index], 0, -1)
+
+		--[[aniCircle:SetImagePath(tArtwork["aniCircle"][index])
+		aniWater:SetImagePath(tArtwork["aniWater"][index])
+
+		aniCircle:SetGroup(0)
+		aniCircle:SetLoopCount(-1)
+		aniWater:SetGroup(0)
+		aniWater:SetLoopCount(-1)]]
+
+		aniCircle:SetAnimateType(7)
+		aniCircle:SetAlpha(200)
+
+		aniWater:Hide()
+	end
 end
 
 function Diablo3Hub.UpdateHFData(frame)
@@ -134,6 +159,46 @@ function Diablo3Hub.UpdateHFData(frame)
 				Diablo3Hub.UpdateCircle(frame, fMana, szPer, szVal)
 			end
 		end
+	elseif frame.index == 3 then
+		if player.nMaxLife > 0 then
+			local fHealth = player.nCurrentLife / player.nMaxLife
+			local szPer = string.format("%d%%", fHealth * 100)
+			local szVal = string.format("%d/%d", player.nCurrentLife, player.nMaxLife)
+			Diablo3Hub.UpdateMergeCircle(frame, fHealth, szPer, szVal, "Left")
+		end
+
+		if dwForceID == 7 then	--唐门
+			if player.nMaxEnergy > 0 then
+				local fPer = player.nCurrentEnergy / player.nMaxEnergy
+				local szPer = string.format("%d%%", fPer * 100)
+				local szVal = string.format("%d/%d", player.nCurrentEnergy, player.nMaxEnergy)
+				Diablo3Hub.UpdateMergeCircle(frame, fPer, szPer, szVal, "Right")
+			end
+		elseif dwForceID == 8 then	--藏剑
+			if player.nMaxRage > 0 then
+				local fRage = player.nCurrentRage / player.nMaxRage
+				local szPer = string.format("%d%%", fRage * 100)
+				local szVal = string.format("%d/%d", player.nCurrentRage, player.nMaxRage)
+				Diablo3Hub.UpdateMergeCircle(frame, fRage, szPer, szVal, "Right")
+			end
+		elseif dwForceID == 10 then	--明教
+			local fPer = math.max(player.nCurrentSunEnergy / player.nMaxSunEnergy, player.nCurrentMoonEnergy / player.nMaxMoonEnergy)
+			local szValS = string.format("日 %d/%d", player.nCurrentSunEnergy / 100, player.nMaxSunEnergy / 100)
+			local szValM = string.format("月 %d/%d", player.nCurrentMoonEnergy / 100, player.nMaxMoonEnergy / 100)
+			if player.nSunPowerValue == 1 then
+				szValS, fPer = "满日", 1
+			elseif player.nMoonPowerValue == 1 then
+				szValM, fPer = "满月", 1
+			end
+			Diablo3Hub.UpdateMergeCircle(frame, fPer, szValS, szValM, "Right")
+		else
+			if player.nMaxMana > 0 and player.nMaxMana ~= 1 then
+				local fMana = player.nCurrentMana / player.nMaxMana
+				local szPer = string.format("%d%%", fMana * 100)
+				local szVal = string.format("%d/%d", player.nCurrentMana, player.nMaxMana)
+				Diablo3Hub.UpdateMergeCircle(frame, fMana, szPer, szVal, "Right")
+			end
+		end
 	end
 end
 
@@ -170,33 +235,77 @@ function Diablo3Hub.UpdateCircle(frame, fp, szPer, szVal)
 	hValue:SetText(szVal)
 end
 
-function Diablo3Hub.IsPanelOpened()
-	local frame = Station.Lookup("Normal/Diablo3Hub")
-	if frame and frame:IsVisible() then
-		return true
+function Diablo3Hub.UpdateMergeCircle(frame, fp, szPer, szVal, szPos)
+	local handle = frame:Lookup("", "")
+	local hCircle = handle:Lookup("Handle_" .. szPos):Lookup("Handle_" .. szPos .. "Circle")
+	local hWater = hCircle:Lookup("Handle_" .. szPos .. "Water")
+	local aniCircle = hCircle:Lookup("Animate_" .. szPos .. "Circle")
+	local aniWater = hWater:Lookup("Animate_" .. szPos .. "Water")
+
+	local cW, cH = aniCircle:GetSize()
+	local cX, cY = aniCircle:GetRelPos()
+	local wW, wH = hWater:GetSize()
+	local wX, wY = hWater:GetRelPos()
+	local h = wH * fp
+	local a = (h + (wY - cY)) / cH
+		--Output(a)
+	aniCircle:SetPercentage(a)
+	local b = cH * a
+	local c = cH - b - (wY - cY)
+	local d = aniWater:GetRelPos()
+	local e, f = aniWater:GetSize()
+	aniWater:SetRelPos(d, c - f / 2)
+	hWater:FormatAllItemPos()
+	if fp == 1 then
+		aniWater:Hide()
+	else
+		aniWater:Show()
 	end
-	return false
 end
 
-function Diablo3Hub.OpenPanel()
-	local frame = nil
-	if not Diablo3Hub.IsPanelOpened() then
-		frame = Wnd.OpenWindow("Interface/Diablo3Hub/Diablo3Hub.ini", "Diablo3Hub")
-	end
+function Diablo3Hub.GetMenu()
+	local menu = {
+		szOption = "DIABLO3血槽",
+		{
+			szOption = "合并血蓝球",
+			bCheck = true,
+			bChecked = Diablo3Hub.bMerge,
+			fnAction = function()
+				Diablo3Hub.bMerge = not Diablo3Hub.bMerge
+				Diablo3Hub.TogglePanel(Diablo3Hub.bMerge)
+			end,
+		}
+	}
+	return menu
 end
 
-function Diablo3Hub.ClosePanel()
-	if Diablo3Hub.IsPanelOpened() then
-		Wnd.CloseWindow("Diablo3Hub")
-	end
-end
-
-do
-	for index = 1, 2, 1 do
-		local frame = Station.Lookup("Normal/Diablo3Hub" .. index)
+function Diablo3Hub.TogglePanel(bMerge)
+	if not bMerge then
+		--打开风格1界面
+		for index = 1, 2, 1 do
+			local frame = Station.Lookup("Normal/Diablo3Hub" .. index)
+			if not frame then
+				frame = Wnd.OpenWindow("Interface\\Diablo3Hub\\Diablo3Hub.ini", "Diablo3Hub" .. index)
+				frame.index = index
+				frame.OnFrameDragEnd = Diablo3Hub.OnFrameDragEnd
+				frame.OnEvent = Diablo3Hub.OnEvent
+				local _this = this
+				this = frame
+				Diablo3Hub.OnFrameCreate()
+				this = _this
+			end
+		end
+		--关闭风格2界面
+		local frame = Station.Lookup("Normal/Diablo3HubMerge")
+		if frame then
+			Wnd.CloseWindow("Diablo3HubMerge")
+		end
+	else
+		--打开风格2界面
+		local frame = Station.Lookup("Normal/Diablo3HubMerge")
 		if not frame then
-			frame = Wnd.OpenWindow(szIniFile, "Diablo3Hub" .. index)
-			frame.index = index
+			frame = Wnd.OpenWindow("Interface\\Diablo3Hub\\Diablo3HubMerge.ini", "Diablo3HubMerge")
+			frame.index = 3
 			frame.OnFrameDragEnd = Diablo3Hub.OnFrameDragEnd
 			frame.OnEvent = Diablo3Hub.OnEvent
 			local _this = this
@@ -204,5 +313,24 @@ do
 			Diablo3Hub.OnFrameCreate()
 			this = _this
 		end
+		--关闭风格1界面
+		for index = 1, 2, 1 do
+			local frame = Station.Lookup("Normal/Diablo3Hub" .. index)
+			if frame then
+				Wnd.CloseWindow("Diablo3Hub" .. index)
+			end
+		end
 	end
 end
+
+RegisterEvent("LOGIN_GAME", function()
+ 	local tMenu = {
+ 		function()
+ 			return {Diablo3Hub.GetMenu()}
+ 		end,
+ 	}
+ 	Player_AppendAddonMenu(tMenu)
+	Diablo3Hub.TogglePanel(false)
+end)
+
+
